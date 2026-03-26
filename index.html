@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Smart To-Do Assistant</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;min-height:100vh;display:flex}
+
+  /* SIDEBAR */
+  #sidebar{width:300px;min-width:300px;background:#1e1e2e;color:#cdd6f4;display:flex;flex-direction:column;height:100vh;position:sticky;top:0;overflow:hidden}
+  #sidebar-header{padding:24px 20px 16px;border-bottom:1px solid #313244}
+  #sidebar-header h2{font-size:16px;font-weight:600;color:#cba6f7;letter-spacing:0.5px;margin-bottom:8px}
+  #task-counter{display:inline-block;background:#313244;color:#cba6f7;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+  #sidebar-list{flex:1;overflow-y:auto;padding:12px}
+  #sidebar-list::-webkit-scrollbar{width:4px}
+  #sidebar-list::-webkit-scrollbar-thumb{background:#45475a;border-radius:4px}
+  .sidebar-item{background:#313244;border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;border:2px solid transparent;transition:border-color 0.2s,background 0.2s}
+  .sidebar-item:hover{border-color:#cba6f7;background:#3b3d52}
+  .sidebar-item.active-item{border-color:#cba6f7}
+  .sidebar-item-title{font-size:13px;font-weight:600;color:#cdd6f4;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+  .sidebar-item-meta{font-size:11px;color:#6c7086;display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .sidebar-item-rank{font-size:10px;font-weight:700;color:#1e1e2e;padding:2px 7px;border-radius:20px;white-space:nowrap}
+  #sidebar-footer{padding:16px}
+  #clear-all-btn{width:100%;padding:10px;background:transparent;border:1px solid #f38ba8;color:#f38ba8;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:background 0.2s}
+  #clear-all-btn:hover{background:#f38ba820}
+
+  /* MAIN */
+  #main{flex:1;padding:32px 24px;overflow-y:auto;max-width:900px}
+  h1{font-size:26px;font-weight:700;color:#1e1e2e;margin-bottom:4px}
+  .subtitle{color:#6c7086;font-size:14px;margin-bottom:28px}
+
+  /* FORM */
+  .form-card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,0.08);margin-bottom:28px}
+  .form-card label{display:block;font-size:11px;font-weight:700;color:#6c7086;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px}
+  .form-card input[type=text],.form-card input[type=date],.form-card select{width:100%;padding:11px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;color:#1e1e2e;outline:none;transition:border-color 0.2s;background:#fff}
+  .form-card input:focus,.form-card select:focus{border-color:#7c3aed}
+  .task-input-wrap{margin-bottom:16px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+  #add-btn{width:100%;padding:13px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:background 0.2s}
+  #add-btn:hover{background:#6d28d9}
+  #add-btn:disabled{background:#a78bfa;cursor:not-allowed}
+
+  /* ERROR */
+  #error-msg{background:#fff0f0;color:#c0392b;border:1px solid #f5c6cb;border-radius:10px;padding:12px 16px;font-size:13px;margin-bottom:16px;display:none}
+
+  /* SPINNER */
+  .spinner-wrap{display:flex;align-items:center;gap:12px;padding:20px;background:#fff;border-radius:16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+  .spinner{width:22px;height:22px;border:3px solid #e0e0e0;border-top-color:#7c3aed;border-radius:50%;animation:spin 0.8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .spinner-text{color:#6c7086;font-size:14px}
+
+  /* SECTION TITLE */
+  .section-title{font-size:13px;font-weight:700;color:#6c7086;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .section-title span{background:#e9d8fd;color:#7c3aed;font-size:11px;padding:2px 8px;border-radius:20px}
+
+  /* TASK CARD */
+  .task-card{background:#fff;border-radius:16px;padding:22px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,0.07);border:2px solid transparent;transition:border-color 0.3s}
+  .task-card.highlight{border-color:#f59e0b;animation:flash 0.8s ease}
+  @keyframes flash{0%,100%{background:#fff}50%{background:#fffbeb}}
+  .card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:10px}
+  .card-title{font-size:17px;font-weight:700;color:#1e1e2e;flex:1}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .badge{font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:0.5px}
+  .badge-high{background:#fde8e8;color:#c0392b}
+  .badge-medium{background:#fef3c7;color:#92400e}
+  .badge-low{background:#d1fae5;color:#065f46}
+  .badge-type{background:#ede9fe;color:#5b21b6}
+  .badge-rank{font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;color:#fff}
+  .rank-critical{background:#7c3aed}
+  .rank-high{background:#ef4444}
+  .rank-medium{background:#f59e0b}
+  .rank-low{background:#10b981}
+  .delete-btn{background:none;border:none;color:#9ca3af;cursor:pointer;font-size:18px;line-height:1;padding:2px 6px;border-radius:6px;transition:color 0.2s,background 0.2s;flex-shrink:0}
+  .delete-btn:hover{color:#ef4444;background:#fde8e8}
+
+  .meta-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;padding:12px;background:#f8f7ff;border-radius:10px}
+  .meta-item label{display:block;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px}
+  .meta-item span{font-size:13px;color:#374151;font-weight:500}
+
+  .subtasks-section{margin-bottom:14px}
+  .subtasks-title{font-size:11px;font-weight:700;color:#6c7086;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+  .subtask-item{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f3f4f6}
+  .subtask-item:last-child{border-bottom:none}
+  .subtask-item input[type=checkbox]{width:16px;height:16px;accent-color:#7c3aed;cursor:pointer;flex-shrink:0}
+  .subtask-item label{font-size:13px;color:#374151;cursor:pointer;line-height:1.4}
+  .subtask-item input:checked+label{text-decoration:line-through;color:#9ca3af}
+
+  .tip-box{background:#f0fdf4;border-left:3px solid #10b981;border-radius:0 8px 8px 0;padding:10px 14px}
+  .tip-label{font-size:10px;font-weight:700;color:#065f46;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+  .tip-text{font-size:13px;color:#374151;font-style:italic;line-height:1.5}
+
+  /* PRIORITY SCORE */
+  .priority-score{font-size:10px;color:#9ca3af;margin-top:10px;text-align:right}
+
+  /* EMPTY STATE */
+  .empty-state{text-align:center;padding:48px 24px;color:#9ca3af}
+  .empty-state .icon{font-size:48px;margin-bottom:12px}
+  .empty-state p{font-size:14px}
+
+  @media(max-width:768px){
+    body{flex-direction:column}
+    #sidebar{width:100%;height:auto;position:relative}
+    #sidebar-list{max-height:200px}
+    #main{padding:20px 16px}
+    .grid-2{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h2>Task History</h2>
+    <div id="task-counter">0 tasks</div>
+  </div>
+  <div id="sidebar-list">
+    <div class="empty-state" id="sidebar-empty" style="padding:24px 12px">
+      <p style="font-size:12px;color:#45475a">No tasks yet</p>
+    </div>
+  </div>
+  <div id="sidebar-footer">
+    <button id="clear-all-btn" onclick="clearAll()">Clear All Tasks</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <h1>Smart To-Do Assistant</h1>
+  <p class="subtitle">Add a task and get AI-powered suggestions on how to tackle it.</p>
+
+  <div class="form-card">
+    <div class="task-input-wrap">
+      <label>What needs to be done?</label>
+      <input type="text" id="task-input" placeholder="e.g., Plan my child's birthday party" onkeydown="if(event.key==='Enter')addTask()"/>
+    </div>
+    <div class="grid-2">
+      <div>
+        <label>Deadline</label>
+        <input type="date" id="deadline-input"/>
+      </div>
+      <div>
+        <label>Importance</label>
+        <select id="importance-input">
+          <option>Critical</option>
+          <option>High</option>
+          <option selected>Medium</option>
+          <option>Low</option>
+        </select>
+      </div>
+      <div>
+        <label>Estimated Time (hours)</label>
+        <input type="text" id="estimate-input" placeholder="e.g., 2 hours"/>
+      </div>
+      <div>
+        <label>Type</label>
+        <select id="type-input">
+          <option>Work</option>
+          <option>Personal</option>
+          <option>Study</option>
+          <option>Health</option>
+          <option>Finance</option>
+          <option>Home</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div id="error-msg">Could not connect to n8n. Make sure your workflow is active.</div>
+    <button id="add-btn" onclick="addTask()">Add Task</button>
+  </div>
+
+  <div id="tasks-container">
+    <div class="empty-state" id="main-empty">
+      <div class="icon">✅</div>
+      <p>Your AI-powered tasks will appear here</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  const WEBHOOK = 'http://localhost:5678/webhook/todo';
+  let tasks = [];
+
+  // Priority score calculator
+  function calcScore(task) {
+    let score = 0;
+
+    // 1. DEADLINE — strongest factor (0-50 pts)
+    if (task.deadline && task.deadline !== 'Not set' && task.deadline !== '') {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const due = new Date(task.deadline); due.setHours(0,0,0,0);
+      const daysLeft = Math.ceil((due - today) / 86400000);
+      if (daysLeft <= 0)       score += 50; // overdue/today
+      else if (daysLeft === 1) score += 45; // tomorrow
+      else if (daysLeft === 2) score += 38; // 2 days away
+      else if (daysLeft === 3) score += 30; // 3 days away
+      else if (daysLeft <= 7)  score += 20; // this week
+      else if (daysLeft <= 14) score += 10; // next week
+      else                     score += 3;  // far away
+    }
+
+    // 2. IMPORTANCE — user's own judgment (0-40 pts)
+    const imp = (task.importance || '').toLowerCase().trim();
+    if (imp === 'critical')      score += 40;
+    else if (imp === 'high')     score += 30;
+    else if (imp === 'medium')   score += 20;
+    else if (imp === 'low')      score += 10;
+
+    // 3. AI PRIORITY — Gemini's assessment, handles all caps/mixed case (0-25 pts)
+    const pri = (task.priority || '').toLowerCase().trim();
+    if (pri === 'critical' || pri === 'very high') score += 25;
+    else if (pri === 'high')                       score += 20;
+    else if (pri === 'medium' || pri === 'moderate') score += 12;
+    else if (pri === 'low')                        score += 5;
+
+    // 4. ESTIMATE TIME — less time = quicker win = higher priority (0-15 pts)
+    const estRaw = (task.estimate || '').toString().toLowerCase();
+    let estHours = parseFloat(estRaw);
+    if (isNaN(estHours)) estHours = 99;
+    if (estRaw.includes('min')) estHours = estHours / 60;
+    if (estHours <= 0.5)      score += 15;
+    else if (estHours <= 1)   score += 12;
+    else if (estHours <= 2)   score += 9;
+    else if (estHours <= 4)   score += 6;
+    else if (estHours <= 8)   score += 3;
+
+    // 5. TASK TYPE — accountability level (0-10 pts)
+    const type = (task.type || '').toLowerCase();
+    if (type === 'work')          score += 10;
+    else if (type === 'study')    score += 8;
+    else if (type === 'finance')  score += 7;
+    else if (type === 'health')   score += 6;
+    else if (type === 'home')     score += 4;
+    else if (type === 'personal') score += 3;
+    else                          score += 2;
+
+    return score;
+  }
+
+  function getRankLabel(score) {
+    if (score >= 80) return { label: 'Critical', cls: 'rank-critical' };
+    if (score >= 60) return { label: 'High', cls: 'rank-high' };
+    if (score >= 35) return { label: 'Medium', cls: 'rank-medium' };
+    return { label: 'Low', cls: 'rank-low' };
+  }
+
+  function getPriorityBadgeClass(priority) {
+    const p = (priority || '').toLowerCase();
+    if (p === 'high') return 'badge-high';
+    if (p === 'medium') return 'badge-medium';
+    return 'badge-low';
+  }
+
+  function saveTasks() {
+    localStorage.setItem('smarttodo_tasks', JSON.stringify(tasks));
+  }
+
+  function loadTasks() {
+    const saved = localStorage.getItem('smarttodo_tasks');
+    if (saved) {
+      tasks = JSON.parse(saved);
+      renderAll();
+    }
+  }
+
+  function renderAll() {
+    // Sort by priority score descending
+    const sorted = [...tasks].sort((a, b) => calcScore(b) - calcScore(a));
+
+    // Clear containers
+    document.getElementById('tasks-container').innerHTML = '';
+    document.getElementById('sidebar-list').innerHTML = '';
+
+    if (sorted.length === 0) {
+      document.getElementById('tasks-container').innerHTML = `
+        <div class="empty-state" id="main-empty">
+          <div class="icon">✅</div>
+          <p>Your AI-powered tasks will appear here</p>
+        </div>`;
+      document.getElementById('sidebar-list').innerHTML = `
+        <div style="padding:24px 12px;text-align:center">
+          <p style="font-size:12px;color:#45475a">No tasks yet</p>
+        </div>`;
+      document.getElementById('task-counter').textContent = '0 tasks';
+      return;
+    }
+
+    document.getElementById('task-counter').textContent = sorted.length + (sorted.length === 1 ? ' task' : ' tasks');
+
+    sorted.forEach((task, idx) => {
+      const score = calcScore(task);
+      const rank = getRankLabel(score);
+
+      // BUILD MAIN CARD
+      const card = document.createElement('div');
+      card.className = 'task-card';
+      card.id = 'card-' + task.id;
+
+      // Subtasks HTML
+      let subtasksHTML = '';
+      if (task.subtasks && task.subtasks.length > 0) {
+        subtasksHTML = `<div class="subtasks-section">
+          <div class="subtasks-title">Subtasks</div>
+          ${task.subtasks.map((s, i) => {
+            const cbId = 'cb-' + task.id + '-' + i;
+            const checked = (task.checkedSubtasks || [])[i] ? 'checked' : '';
+            return `<div class="subtask-item">
+              <input type="checkbox" id="${cbId}" ${checked} onchange="toggleSubtask('${task.id}', ${i}, this.checked)"/>
+              <label for="${cbId}">${s}</label>
+            </div>`;
+          }).join('')}
+        </div>`;
+      }
+
+      const deadline = task.deadline && task.deadline !== '' ? task.deadline : 'No deadline set';
+      const estimate = task.estimate && task.estimate !== '' ? task.estimate : 'Not set';
+      const tip = task.tip || '';
+
+      card.innerHTML = `
+        <div class="card-top">
+          <div class="card-title">#${idx + 1} ${task.title || task.taskName}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            <span class="badge-rank ${rank.cls}">${rank.label}</span>
+            <span class="badge ${getPriorityBadgeClass(task.priority)}">${task.priority || 'N/A'}</span>
+            <span class="badge badge-type">${task.type || ''}</span>
+            <button class="delete-btn" onclick="deleteTask('${task.id}')" title="Delete">&#x2715;</button>
+          </div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-item">
+            <label>Estimate Time</label>
+            <span>${estimate}</span>
+          </div>
+          <div class="meta-item">
+            <label>Deadline</label>
+            <span>${deadline}</span>
+          </div>
+        </div>
+        ${subtasksHTML}
+        ${tip ? `<div class="tip-box"><div class="tip-label">AI Tip</div><div class="tip-text">${tip}</div></div>` : ''}
+        <div class="priority-score">Priority score: ${score}</div>
+      `;
+      document.getElementById('tasks-container').appendChild(card);
+
+      // BUILD SIDEBAR ITEM
+      const item = document.createElement('div');
+      item.className = 'sidebar-item';
+      item.id = 'sidebar-' + task.id;
+      item.onclick = () => scrollToCard(task.id);
+      item.innerHTML = `
+        <div class="sidebar-item-title">
+          <span class="sidebar-item-rank ${rank.cls}">${rank.label}</span>
+          ${task.title || task.taskName}
+        </div>
+        <div class="sidebar-item-meta">
+          <span>${task.type || ''}</span>
+          ${deadline !== 'No deadline set' ? `<span>📅 ${deadline}</span>` : ''}
+        </div>
+      `;
+      document.getElementById('sidebar-list').appendChild(item);
+    });
+  }
+
+  function scrollToCard(id) {
+    const card = document.getElementById('card-' + id);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('highlight');
+      setTimeout(() => card.classList.remove('highlight'), 1500);
+    }
+    // Mark active in sidebar
+    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active-item'));
+    const sideItem = document.getElementById('sidebar-' + id);
+    if (sideItem) sideItem.classList.add('active-item');
+  }
+
+  function toggleSubtask(taskId, index, checked) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    if (!task.checkedSubtasks) task.checkedSubtasks = new Array(task.subtasks.length).fill(false);
+    task.checkedSubtasks[index] = checked;
+    saveTasks();
+  }
+
+  function deleteTask(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    saveTasks();
+    renderAll();
+  }
+
+  function clearAll() {
+    if (!confirm('Clear all tasks? This cannot be undone.')) return;
+    tasks = [];
+    saveTasks();
+    renderAll();
+  }
+
+  async function addTask() {
+    const taskName = document.getElementById('task-input').value.trim();
+    if (!taskName) { document.getElementById('task-input').focus(); return; }
+
+    const deadline = document.getElementById('deadline-input').value;
+    const importance = document.getElementById('importance-input').value;
+    const estimate = document.getElementById('estimate-input').value.trim();
+    const type = document.getElementById('type-input').value;
+
+    document.getElementById('error-msg').style.display = 'none';
+    document.getElementById('add-btn').disabled = true;
+    document.getElementById('add-btn').textContent = 'AI is thinking...';
+
+    // Show spinner
+    const spinner = document.createElement('div');
+    spinner.className = 'spinner-wrap';
+    spinner.id = 'spinner';
+    spinner.innerHTML = '<div class="spinner"></div><span class="spinner-text">AI is analysing your task...</span>';
+    document.getElementById('tasks-container').prepend(spinner);
+
+    try {
+      const res = await fetch(WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task: taskName, deadline, importance, estimate, type })
+      });
+
+      const text = await res.text();
+      let data;
+
+      // Parse — handle if Gemini wraps in markdown code blocks
+      try {
+        // Strip markdown code fences if present
+        const clean = text.replace(/```json|```/g, '').trim();
+        data = JSON.parse(clean);
+      } catch {
+        // Try to extract JSON object from string
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) data = JSON.parse(match[0]);
+        else throw new Error('Could not parse response');
+      }
+
+      // Handle nested output field (n8n AI agent wraps in { output: "..." })
+      if (data.output) {
+        try {
+          const clean2 = data.output.replace(/```json|```/g, '').trim();
+          data = JSON.parse(clean2);
+        } catch {
+          const match2 = data.output.match(/\{[\s\S]*\}/);
+          if (match2) data = JSON.parse(match2[0]);
+        }
+      }
+
+      // Build task object
+      const newTask = {
+        id: Date.now().toString(),
+        taskName,
+        title: data.title || taskName,
+        priority: data.priority || importance,
+        subtasks: Array.isArray(data.subtasks) ? data.subtasks : [],
+        estimate: data.estimate || estimate || 'Not set',
+        deadline: data.deadline || deadline || '',
+        tip: data.tip || '',
+        type,
+        importance,
+        checkedSubtasks: []
+      };
+
+      tasks.push(newTask);
+      saveTasks();
+      renderAll();
+
+      // Clear form
+      document.getElementById('task-input').value = '';
+      document.getElementById('estimate-input').value = '';
+      document.getElementById('deadline-input').value = '';
+
+      // Scroll to new card
+      setTimeout(() => scrollToCard(newTask.id), 100);
+
+    } catch (err) {
+      console.error('Fetch error:', err);
+      document.getElementById('error-msg').style.display = 'block';
+    } finally {
+      const sp = document.getElementById('spinner');
+      if (sp) sp.remove();
+      document.getElementById('add-btn').disabled = false;
+      document.getElementById('add-btn').textContent = 'Add Task';
+    }
+  }
+
+  // Load on startup
+  loadTasks();
+</script>
+</body>
+</html>

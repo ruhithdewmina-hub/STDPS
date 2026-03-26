@@ -1,0 +1,175 @@
+{
+  "name": "Smart To-Do Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "todo",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -368,
+        -80
+      ],
+      "id": "791fd3fa-064d-4273-9daf-b74469bddb12",
+      "name": "Webhook",
+      "webhookId": "e07726c5-7ba0-4865-b98c-db954667c414"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a smart to-do assistant. Your job is to help the user manage their tasks intelligently.\n\nWhen given a task or goal, you must:\n1. Rewrite it as a clear, actionable task title\n2. Break it into 3-5 concrete subtasks\n3. Assign a priority: High, Medium, or Low (based on urgency words like \"urgent\", \"today\", \"ASAP\")\n4. Estimate how long it will take in total\n5. If the task mentions a day or date, extract and include a deadline\n6. If you need more information to help (e.g. the task is vague), use your search tool to find relevant context\n\nAlways respond in this exact JSON format:\n{\n  \"title\": \"...\",\n  \"subtasks\": [\"...\", \"...\", \"...\"],\n  \"priority\": \"High|Medium|Low\",\n  \"estimate\": \"...\",\n  \"deadline\": \"...\",\n  \"tip\": \"One helpful tip for completing this task\"\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -160,
+        -80
+      ],
+      "id": "9fbb845d-abb6-4bba-91d9-e7775e140787",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTimeTool",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        128
+      ],
+      "id": "4fc6fec9-9e61-4620-8065-3693f87a13ad",
+      "name": "Date & Time"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "todo-memory",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -160,
+        128
+      ],
+      "id": "afa49ba2-b73b-4c69-8907-c6825f5b6cec",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"suggestion\": \"{{ $json.text }}\" }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        192,
+        -80
+      ],
+      "id": "f413a08e-3f15-4997-9fcc-13b6e560c2c1",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        128
+      ],
+      "id": "49f3ea2c-c4c1-4dd3-a007-2c5753c87b30",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "qWvOpxfotc9P88lx",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c120204d-c339-4993-9a4b-1f1856aeafd2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "720a154ea81e89feb4c3590299eab2b2792be9a1618d6a23292be4d1028692c9"
+  },
+  "id": "69ii1BM3iIQQEaEQ",
+  "tags": []
+}
